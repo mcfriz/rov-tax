@@ -1,14 +1,17 @@
 import { useMemo, useRef, useState } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import type { AppState, DayKey, DayOverride, DutyType, MidnightLocation } from '../../data/types'
 import type { DerivedDay } from '../../rules/trip_engine'
-import { buildMonthDays, getDayStatus, getMonthTint, getTripStrip, parseDayKey } from './calendar_helpers'
+import { buildMonthDays, getDayStatus, getMonthTint, getTripStrip, isDayInWindow, parseDayKey } from './calendar_helpers'
+import { Assets } from '../common/assets'
 
 type Props = {
   dayMap: Record<DayKey, DerivedDay>
   selectedDayKey: DayKey
   onSelectDay: (dayKey: DayKey) => void
-  state: AppState
-  onChange: (next: AppState) => void
+  windowStartDayKey: DayKey
+  windowEndDayKey: DayKey
+  onChange: Dispatch<SetStateAction<AppState>>
 }
 
 const weekdayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
@@ -22,12 +25,26 @@ const midnightOptions: Array<{ value: MidnightLocation; label: string }> = [
 
 const dutyOptions: DutyType[] = ['OFFSHORE', 'LEAVE', 'TRANSIT', 'TRAINING', 'SICK', 'OTHER']
 
+const statusToAsset: Record<string, string> = {
+  qualifying: Assets.statusDots.qualifying,
+  'at-risk': Assets.statusDots.atRisk,
+  non: Assets.statusDots.nonQualifying,
+  unknown: Assets.statusDots.unknown,
+}
+
 function getMonthTitle(dayKey: DayKey): string {
   const date = parseDayKey(dayKey)
   return `${date.toLocaleString('default', { month: 'long' })} ${date.getFullYear()}`
 }
 
-export default function MonthView({ dayMap, selectedDayKey, onSelectDay, state, onChange }: Props) {
+export default function MonthView({
+  dayMap,
+  selectedDayKey,
+  onSelectDay,
+  windowStartDayKey,
+  windowEndDayKey,
+  onChange,
+}: Props) {
   const date = useMemo(() => parseDayKey(selectedDayKey), [selectedDayKey])
   const year = date.getFullYear()
   const monthIndex = date.getMonth()
@@ -117,30 +134,30 @@ export default function MonthView({ dayMap, selectedDayKey, onSelectDay, state, 
       return
     }
 
-    const nextOverrides: Record<DayKey, DayOverride> = { ...state.overrides }
-    selectedDays.forEach((dayKey) => {
-      const base = dayMap[dayKey]
-      const existing = nextOverrides[dayKey]
-      const updated: DayOverride = {
-        dayKey,
-        midnightLocation: bulkMidnight !== '' ? bulkMidnight : existing?.midnightLocation ?? base?.midnightLocation,
-        dutyType: bulkDuty !== '' ? bulkDuty : existing?.dutyType ?? base?.dutyType,
-        countsTowardSed:
-          bulkCounts !== ''
-            ? bulkCounts === 'yes'
-            : existing?.countsTowardSed ?? base?.countsTowardSed,
-        vessel: bulkVessel !== '' ? bulkVessel : existing?.vessel ?? base?.vessel,
-        notes: existing?.notes ?? base?.notes,
-        lastEdited: Date.now(),
-      }
-
-      nextOverrides[dayKey] = updated
-    })
-
-    onChange({
-      ...state,
-      overrides: nextOverrides,
-    })
+    onChange((prev) => ({
+      ...prev,
+      overrides: (() => {
+        const nextOverrides: Record<DayKey, DayOverride> = { ...prev.overrides }
+        selectedDays.forEach((dayKey) => {
+          const base = dayMap[dayKey]
+          const existing = nextOverrides[dayKey]
+          const updated: DayOverride = {
+            dayKey,
+            midnightLocation: bulkMidnight !== '' ? bulkMidnight : existing?.midnightLocation ?? base?.midnightLocation,
+            dutyType: bulkDuty !== '' ? bulkDuty : existing?.dutyType ?? base?.dutyType,
+            countsTowardSed:
+              bulkCounts !== ''
+                ? bulkCounts === 'yes'
+                : existing?.countsTowardSed ?? base?.countsTowardSed,
+            vessel: bulkVessel !== '' ? bulkVessel : existing?.vessel ?? base?.vessel,
+            notes: existing?.notes ?? base?.notes,
+            lastEdited: Date.now(),
+          }
+          nextOverrides[dayKey] = updated
+        })
+        return nextOverrides
+      })(),
+    }))
     exitSelectMode()
   }
 
@@ -148,14 +165,16 @@ export default function MonthView({ dayMap, selectedDayKey, onSelectDay, state, 
     if (selectedDays.size === 0) {
       return
     }
-    const nextOverrides = { ...state.overrides }
-    selectedDays.forEach((dayKey) => {
-      delete nextOverrides[dayKey]
-    })
-    onChange({
-      ...state,
-      overrides: nextOverrides,
-    })
+    onChange((prev) => ({
+      ...prev,
+      overrides: (() => {
+        const nextOverrides = { ...prev.overrides }
+        selectedDays.forEach((dayKey) => {
+          delete nextOverrides[dayKey]
+        })
+        return nextOverrides
+      })(),
+    }))
     exitSelectMode()
   }
 
@@ -236,23 +255,32 @@ export default function MonthView({ dayMap, selectedDayKey, onSelectDay, state, 
           const status = getDayStatus(derived)
           const strip = getTripStrip(derived?.tripType ?? null)
           const isSelected = selectedDays.has(dayKey)
+          const inWindow = isDayInWindow(dayKey, windowStartDayKey, windowEndDayKey)
+          const isUk = derived?.midnightLocation === 'INSIDE_12NM_UK'
+          const isNorway = derived?.midnightLocation === 'NORWAY_SECTOR'
 
           return (
             <button
               key={dayKey}
               type="button"
-              className={`day-cell ${status} ${isSelected ? 'is-selected' : ''}`}
+              className={`day-cell ${status} ${inWindow ? 'in-window' : ''} ${isSelected ? 'is-selected' : ''}`}
               onClick={() => handleDayClick(dayKey)}
               onPointerDown={() => handleLongPress(dayKey)}
               onPointerUp={handlePointerUp}
               onPointerLeave={handlePointerUp}
             >
               <span className={`trip-strip ${strip}`} aria-hidden="true" />
+              {isUk ? (
+                <img className="day-tag" src={Assets.tags.uk12nm} alt="" aria-hidden="true" />
+              ) : null}
+              {isNorway ? (
+                <img className="day-tag" src={Assets.tags.norway} alt="" aria-hidden="true" />
+              ) : null}
               <span className="day-number">{Number(dayKey.split('-')[2])}</span>
-              <span className={`day-dot ${status}`} />
+              <img className="status-dot" src={statusToAsset[status]} alt="" aria-hidden="true" />
             </button>
-          )}
-        )}
+          )
+        })}
       </div>
     </div>
   )

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Trips icon">
+  <g fill="none" stroke="#E6EEF8" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="96" y="180" width="320" height="220" rx="40"/>
+    <path d="M196 180 Q196 130 256 130 Q316 130 316 180"/>
+    <line x1="96" y1="250" x2="416" y2="250"/>
+    <line x1="196" y1="210" x2="196" y2="240"/>
+    <line x1="316" y1="210" x2="316" y2="240"/>
+    <circle cx="196" cy="310" r="6"/>
+    <circle cx="256" cy="310" r="6"/>
+    <circle cx="316" cy="310" r="6"/>
+    <circle cx="196" cy="350" r="6"/>
+    <circle cx="256" cy="350" r="6"/>
+    <circle cx="316" cy="350" r="6"/>
+  </g>
+</svg>

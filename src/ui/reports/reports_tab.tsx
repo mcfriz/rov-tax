@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import type { AppState } from '../../data/types'
 import { toDayKey } from '../../data/helpers'
 import { generateDayMap } from '../../rules/trip_engine'
@@ -7,7 +8,7 @@ import { exportWindowCsv } from '../../rules/csv_export'
 
 type Props = {
   state: AppState
-  onChange: (next: AppState) => void
+  onChange: Dispatch<SetStateAction<AppState>>
 }
 
 export default function ReportsTab({ state }: Props) {
@@ -53,7 +54,7 @@ export default function ReportsTab({ state }: Props) {
 
       <section className="card reports-summary">
         <h3>SED Window Export</h3>
-        <p>{summary.startDayKey} ? {summary.endDayKey}</p>
+        <p>{summary.startDayKey} to {summary.endDayKey}</p>
         <div className="overview-grid">
           <div>
             <span className="overview-label">Abroad midnights</span>

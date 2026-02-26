@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-label="ROV TAX header mark">
+  <g transform="translate(110,150)">
+    <circle cx="0" cy="0" r="64" fill="none" stroke="#4DA3FF" stroke-width="10"/>
+    <circle cx="0" cy="0" r="42" fill="none" stroke="#4DA3FF" stroke-width="6" opacity="0.65"/>
+    <g stroke="#4DA3FF" stroke-width="6" stroke-linecap="round">
+      <line x1="0" y1="-78" x2="0" y2="-92"/>
+      <line x1="0" y1="78"  x2="0" y2="92"/>
+      <line x1="-78" y1="0" x2="-92" y2="0"/>
+      <line x1="78"  y1="0" x2="92"  y2="0"/>
+    </g>
+    <g fill="none" stroke="#4DA3FF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="-46" y="-26" width="92" height="52" rx="14"/>
+      <line x1="0" y1="-34" x2="0" y2="-56"/>
+      <circle cx="0" cy="0" r="12"/>
+      <circle cx="-28" cy="2" r="6"/>
+      <circle cx="28"  cy="2" r="6"/>
+      <path d="M-46 18 L-72 36"/>
+      <path d="M46 18 L72 36"/>
+      <path d="M-78 40 l-10 10 M-78 40 l10 10"/>
+      <path d="M78 40 l-10 10 M78 40 l10 10"/>
+    </g>
+  </g>
+
+  <g transform="translate(240,170)">
+    <text x="0" y="0"
+          fill="#E6EEF8"
+          font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif"
+          font-size="96"
+          font-weight="700"
+          letter-spacing="2">
+      ROV
+      <tspan fill="#4DA3FF" font-weight="800"> TAX</tspan>
+    </text>
+    <line x1="0" y1="34" x2="520" y2="34" stroke="#4DA3FF" stroke-width="4" opacity="0.35"/>
+  </g>
+</svg>

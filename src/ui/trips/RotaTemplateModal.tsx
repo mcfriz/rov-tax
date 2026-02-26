@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { DayKey, SectorDefault } from '../../data/types'
 import { toDayKey } from '../../data/helpers'
 
@@ -45,6 +45,13 @@ export default function RotaTemplateModal({ onClose, onSave, defaultSector }: Pr
   const [cycles, setCycles] = useState(4)
   const [defaultVessel, setDefaultVessel] = useState('')
   const [offshoreSector, setOffshoreSector] = useState<SectorDefault>(defaultSector)
+
+  useEffect(() => {
+    document.body.classList.add('modal-open')
+    return () => {
+      document.body.classList.remove('modal-open')
+    }
+  }, [])
 
   const endDayKey = useMemo(() => {
     if (mode !== 'months') {

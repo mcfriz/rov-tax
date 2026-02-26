@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { ReactElement } from 'react'
+import type { CSSProperties, Dispatch, ReactElement, SetStateAction } from 'react'
 import './App.css'
 import { loadState, saveState } from './data/storage'
 import { defaultState } from './data/state'
@@ -10,6 +10,7 @@ import OverviewPage from './ui/overview/OverviewPage'
 import ReportsPage from './ui/reports/ReportsPage'
 import { generateDayMap } from './rules/trip_engine'
 import SettingsModal from './ui/SettingsModal'
+import { Assets } from './ui/common/assets'
 
 type TabDef = {
   id: TabId
@@ -19,7 +20,7 @@ type TabDef = {
 
 type TabPageProps = {
   appState: AppState
-  setAppState: (next: AppState) => void
+  setAppState: Dispatch<SetStateAction<AppState>>
 }
 
 function App() {
@@ -73,7 +74,7 @@ function App() {
     setActiveTab(nextTab)
   }
 
-  const handleResetDemo = () => {
+  const handleResetAppData = () => {
     setAppState(defaultState)
     saveState(defaultState)
     setIsSettingsOpen(false)
@@ -82,7 +83,11 @@ function App() {
   return (
     <div className="app-shell">
       <header className="app-bar">
-        <div className="app-title">ROV TAX</div>
+        <div className="app-bar-bg" style={{ backgroundImage: `url(${Assets.backgrounds.header})` }} aria-hidden />
+        <div className="app-title">
+          <img src={Assets.mark} alt="" aria-hidden="true" />
+          <span className="sr-only">ROV TAX</span>
+        </div>
         <div className="app-actions">
           <button type="button" className="ghost-button" onClick={() => setIsSettingsOpen(true)}>
             Settings
@@ -112,13 +117,18 @@ function App() {
             aria-selected={activeTab === id}
             onClick={() => handleTabChange(id)}
           >
-            <span>{label}</span>
+            <span
+              className="tab-icon"
+              aria-hidden="true"
+              style={{ '--icon-url': `url(${Assets.tabs[id]})` } as CSSProperties}
+            />
+            <span className="tab-label">{label}</span>
           </button>
         ))}
       </nav>
 
       {isSettingsOpen ? (
-        <SettingsModal onClose={() => setIsSettingsOpen(false)} onReset={handleResetDemo} state={appState} />
+        <SettingsModal onClose={() => setIsSettingsOpen(false)} onReset={handleResetAppData} state={appState} />
       ) : null}
     </div>
   )

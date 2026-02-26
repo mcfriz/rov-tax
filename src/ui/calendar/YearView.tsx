@@ -1,17 +1,38 @@
 import type { DayKey } from '../../data/types'
 import type { DerivedDay } from '../../rules/trip_engine'
-import { buildMonthDays, formatDayKey, getDayStatus, getMonthTint, parseDayKey } from './calendar_helpers'
+import { buildMonthDays, formatDayKey, getDayStatus, getMonthTint, isDayInWindow, parseDayKey } from './calendar_helpers'
+import { Assets } from '../common/assets'
 
 type Props = {
   dayMap: Record<DayKey, DerivedDay>
   onSelectMonth: (dayKey: DayKey) => void
+  windowStartDayKey: DayKey
+  windowEndDayKey: DayKey
+  focusWindowOnly: boolean
 }
 
 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-export default function YearView({ dayMap, onSelectMonth }: Props) {
+const statusToAsset: Record<string, string> = {
+  qualifying: Assets.statusDots.qualifying,
+  'at-risk': Assets.statusDots.atRisk,
+  non: Assets.statusDots.nonQualifying,
+  unknown: Assets.statusDots.unknown,
+}
+
+export default function YearView({
+  dayMap,
+  onSelectMonth,
+  windowStartDayKey,
+  windowEndDayKey,
+  focusWindowOnly,
+}: Props) {
   const currentYear = new Date().getFullYear()
-  const years = Array.from({ length: 11 }, (_, idx) => currentYear - 5 + idx)
+  const windowStartYear = parseDayKey(windowStartDayKey).getFullYear()
+  const windowEndYear = parseDayKey(windowEndDayKey).getFullYear()
+  const years = focusWindowOnly
+    ? Array.from({ length: windowEndYear - windowStartYear + 1 }, (_, idx) => windowStartYear + idx)
+    : Array.from({ length: 11 }, (_, idx) => currentYear - 5 + idx)
 
   return (
     <div className="year-view">
@@ -42,8 +63,11 @@ export default function YearView({ dayMap, onSelectMonth }: Props) {
                         return <span key={`${year}-${monthIndex}-${idx}`} className="mini-cell empty" />
                       }
                       const status = getDayStatus(dayMap[dayKey])
+                      const inWindow = isDayInWindow(dayKey, windowStartDayKey, windowEndDayKey)
                       return (
-                        <span key={dayKey} className={`mini-cell dot ${status}`} aria-label={status} />
+                        <span key={dayKey} className={`mini-cell ${inWindow ? 'in-window' : ''}`}>
+                          <img className="status-dot-mini" src={statusToAsset[status]} alt="" aria-hidden="true" />
+                        </span>
                       )
                     })}
                   </div>

@@ -1,17 +1,18 @@
 import { useEffect, useMemo } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import type { AppState, CalendarZoom, DayKey } from '../../data/types'
 import { generateDayMap } from '../../rules/trip_engine'
 import { toDayKey } from '../../data/helpers'
 import YearView from './YearView'
 import MonthView from './MonthView'
 import DayView from './DayView'
-import { autoFindBestWindow } from '../../rules/sed_engine'
+import { autoFindBestWindow, evaluateWindow } from '../../rules/sed_engine'
 
 const zoomOrder: CalendarZoom[] = ['YEAR', 'MONTH', 'DAY']
 
 type Props = {
   state: AppState
-  onChange: (next: AppState) => void
+  onChange: Dispatch<SetStateAction<AppState>>
 }
 
 function zoomOut(current: CalendarZoom): CalendarZoom {
@@ -30,12 +31,15 @@ export default function CalendarPage({ state, onChange }: Props) {
   const dayMap = useMemo(() => generateDayMap(state.trips, state.overrides), [state.trips, state.overrides])
 
   const selectedDate = state.selectedDate || toDayKey(new Date())
+  const selectedStart = state.settings.selectedPeriodStart
   const calendarZoom = state.calendarZoom
 
-  const sedSummary = useMemo(
-    () => autoFindBestWindow(selectedDate, 730, dayMap).summary,
-    [dayMap, selectedDate],
-  )
+  const sedSummary = useMemo(() => {
+    if (selectedStart) {
+      return evaluateWindow(selectedStart, 365, dayMap)
+    }
+    return autoFindBestWindow(selectedDate, 730, dayMap).summary
+  }, [dayMap, selectedDate, selectedStart])
 
   useEffect(() => {
     const existing = window.history.state as { calendarZoom?: CalendarZoom; selectedDate?: DayKey } | null
@@ -46,33 +50,35 @@ export default function CalendarPage({ state, onChange }: Props) {
     const handlePop = (event: PopStateEvent) => {
       const nextState = event.state as { calendarZoom?: CalendarZoom; selectedDate?: DayKey } | null
       if (nextState?.calendarZoom) {
-        onChange({
-          ...state,
-          calendarZoom: nextState.calendarZoom,
-          selectedDate: nextState.selectedDate ?? selectedDate,
-        })
+        onChange((prev) => ({
+          ...prev,
+          calendarZoom: nextState.calendarZoom ?? prev.calendarZoom,
+          selectedDate: nextState.selectedDate ?? prev.selectedDate,
+        }))
         return
       }
 
-      if (state.calendarZoom !== 'YEAR') {
-        onChange({
-          ...state,
-          calendarZoom: zoomOut(state.calendarZoom),
-        })
-      }
+      onChange((prev) =>
+        prev.calendarZoom === 'YEAR'
+          ? prev
+          : {
+              ...prev,
+              calendarZoom: zoomOut(prev.calendarZoom),
+            },
+      )
     }
 
     window.addEventListener('popstate', handlePop)
     return () => window.removeEventListener('popstate', handlePop)
-  }, [calendarZoom, onChange, selectedDate, state])
+  }, [calendarZoom, onChange, selectedDate])
 
   const handleZoomChange = (nextZoom: CalendarZoom, nextDate: DayKey) => {
     window.history.pushState({ calendarZoom: nextZoom, selectedDate: nextDate }, '')
-    onChange({
-      ...state,
+    onChange((prev) => ({
+      ...prev,
       calendarZoom: nextZoom,
       selectedDate: nextDate,
-    })
+    }))
   }
 
   const handleBack = () => {
@@ -100,6 +106,9 @@ export default function CalendarPage({ state, onChange }: Props) {
         <div>
           <h3>SED Window: {sedSummary.status.replace('_', ' ')}</h3>
           <p>{sedSummary.reason}</p>
+          <p>
+            {selectedStart ? 'Selected period' : 'Auto period'}: {sedSummary.startDayKey} to {sedSummary.endDayKey}
+          </p>
         </div>
         <div className="sed-meta">
           <span>UK: {sedSummary.ukMidnights}</span>
@@ -110,7 +119,13 @@ export default function CalendarPage({ state, onChange }: Props) {
       </section>
 
       {calendarZoom === 'YEAR' ? (
-        <YearView dayMap={dayMap} onSelectMonth={(dayKey) => handleZoomChange('MONTH', dayKey)} />
+        <YearView
+          dayMap={dayMap}
+          onSelectMonth={(dayKey) => handleZoomChange('MONTH', dayKey)}
+          windowStartDayKey={sedSummary.startDayKey}
+          windowEndDayKey={sedSummary.endDayKey}
+          focusWindowOnly={Boolean(selectedStart)}
+        />
       ) : null}
 
       {calendarZoom === 'MONTH' ? (
@@ -118,8 +133,9 @@ export default function CalendarPage({ state, onChange }: Props) {
           dayMap={dayMap}
           selectedDayKey={selectedDate}
           onSelectDay={(dayKey) => handleZoomChange('DAY', dayKey)}
+          windowStartDayKey={sedSummary.startDayKey}
+          windowEndDayKey={sedSummary.endDayKey}
           onChange={onChange}
-          state={state}
         />
       ) : null}
 

@@ -1,4 +1,4 @@
-import type { DayKey, SectorDefault, Trip } from '../data/types'
+﻿import type { DayKey, SectorDefault, Trip } from '../data/types'
 import { createTrip } from '../data/helpers'
 
 export type RotaTemplateInput = {
@@ -76,37 +76,18 @@ export function generateRotaTrips(
       planned: true,
     })
 
-    const homeStartDate = addDays(cursor, onDays)
-    const homeStart = formatDayKey(homeStartDate)
-    const homeEnd = formatDayKey(addDays(homeStartDate, offDays - 1))
-
-    const homeTrip = createTrip({
-      title: 'Planned Home Leave',
-      tripType: 'UK_HOME',
-      startDayKey: homeStart,
-      endDayKey: homeEnd,
-      sectorDefault: 'OTHER',
-      dutyDefault: 'LEAVE',
-      countsTowardSedDefault: false,
-      planned: true,
-    })
-
-    const generated: Trip[] = [offshoreTrip, homeTrip]
-
-    for (const candidate of generated) {
-      const conflictingTrips = existingTrips.filter((trip) => overlaps(trip, candidate.startDayKey, candidate.endDayKey))
-      if (conflictingTrips.length === 0) {
-        plannedTrips.push(candidate)
-        continue
-      }
-
+    const conflictingTrips = existingTrips.filter((trip) =>
+      overlaps(trip, offshoreTrip.startDayKey, offshoreTrip.endDayKey),
+    )
+    if (conflictingTrips.length === 0) {
+      plannedTrips.push(offshoreTrip)
+    } else {
       const hasConfirmed = conflictingTrips.some(isConfirmed)
       if (hasConfirmed) {
         skippedConfirmedOverlaps += 1
-        continue
+      } else {
+        skippedPlannedOverlaps += 1
       }
-
-      skippedPlannedOverlaps += 1
     }
 
     cursor = addDays(cursor, onDays + offDays)
@@ -123,7 +104,7 @@ export function generateRotaTrips(
 export function debugPrintRota(input: RotaTemplateInput): string {
   const result = generateRotaTrips([], input)
   return result.plannedTrips
-    .map((trip) => `${trip.tripType} ${trip.startDayKey} ? ${trip.endDayKey}`)
+    .map((trip) => `${trip.tripType} ${trip.startDayKey} to ${trip.endDayKey}`)
     .join('\n')
 }
 

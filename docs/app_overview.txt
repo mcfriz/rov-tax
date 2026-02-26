@@ -1,0 +1,161 @@
+﻿ROV TAX v1 - Product and Rules Specification
+
+1. Purpose
+
+ROV TAX is a local-first web app for offshore ROV personnel to track and plan UK Seafarers' Earnings Deduction (SED) eligibility.
+
+The app must:
+- keep trip entry simple
+- generate day-level SED evaluation automatically
+- let users set a 365-day claim window start date
+- show clear fix guidance when not qualifying
+- provide calendar visibility and CSV export
+
+This is a tracking/planning tool, not legal advice.
+
+2. Core UX Model
+
+Authoritative tab responsibilities:
+- Trips: primary data input
+- Calendar: day-level visual output + overrides
+- Overview: decision engine and fix guidance
+- Reports: export
+
+3. Input Model (Trips-first)
+
+Users create trips as the source of truth.
+
+Manual trip types available in Add Trip modal:
+- OFFSHORE_WORK
+- HOLIDAY_ABROAD
+- TRAINING_ABROAD
+- TRANSIT
+- UK_WATERS_WORK
+
+Important behavior:
+- Users do not manually add UK_HOME trips.
+- Home time is inferred automatically for missing days between trips.
+- Planned trips are created only via the rota template flow.
+
+Trip fields:
+- title
+- tripType
+- startDayKey (inclusive)
+- endDayKey (inclusive)
+- vessel (optional)
+- sectorDefault
+- dutyDefault
+- planned (false for manual trips)
+
+SED default logic for trips:
+- If sectorDefault is UK_INSIDE_12NM -> countsTowardSedDefault = false
+- Otherwise countsTowardSedDefault = true
+
+4. Day Derivation
+
+DerivedDay is generated from trips + overrides.
+
+Overlap resolution:
+1. Confirmed trip beats planned trip
+2. Later updatedAt wins
+3. If tied, mark conflict
+
+Gap fill rule:
+- Every day between the earliest trip start and latest trip end that has no trip is derived as UK_HOME day.
+
+5. Overrides
+
+Day overrides apply field-by-field to a single dayKey:
+- midnightLocation
+- dutyType
+- countsTowardSed
+- vessel
+- notes
+
+Overrides do not mutate trip records.
+
+6. SED Evaluation Rules
+
+Window:
+- Start = user-selected period start dayKey (authoritative when set)
+- Length = 365 days
+- End = start + 364 days
+
+Midnight classification:
+- INSIDE_12NM_UK -> UK midnight
+- OUTSIDE_UK -> Abroad midnight
+- NORWAY_SECTOR -> Abroad midnight (tracked separately)
+- UNKNOWN -> Unknown
+
+Primary pass/fail checks:
+- Half rule: abroadMidnights > ukMidnights
+- Consecutive UK rule: longestConsecutiveUkStreak must be <= 183
+
+Unknown handling:
+- Unknown days are excluded from known-day counts
+- Best/worst case half-rule outcomes are computed by assigning unknowns to abroad vs UK
+- Confidence is reduced as unknown days increase, and capped lower when best/worst outcomes disagree
+
+Status definitions:
+- QUALIFYING: half rule passes, UK streak <= 183, healthy margin
+- AT_RISK: passes, but low margin and/or uncertainty
+- FAILING: half rule fails or UK streak > 183
+- UNKNOWN: uncertainty too high to determine reliably
+
+Key summary outputs:
+- abroadMidnights, ukMidnights, norwayMidnights, unknownDays
+- margin (abroad - UK)
+- passesHalfRule
+- longestConsecutiveUkStreak
+- bufferUkDaysRemaining
+- confidencePercent
+- fixNeededAbroadDays
+
+7. Gap/Fix Guidance
+
+When failing, compute:
+- fixNeededAbroadDays = max(0, ukMidnights - abroadMidnights + 1)
+
+Critical ranges v1 algorithm:
+- Build consecutive UK-midnight segments in the 365-day window
+- Rank by segment length (desc), then recency (desc)
+- Select segments until cumulative length >= fixNeededAbroadDays
+
+Show actionable text:
+- what failed
+- how many additional abroad midnights are needed
+- date ranges to target
+
+8. Calendar Requirements
+
+Navigation:
+- YEAR -> MONTH -> DAY (tap zoom)
+- browser back mirrors zoom-out
+
+Visuals:
+- status dots per day
+- sector tag markers (UK 12nm, Norway)
+- long-press from month view enters bulk override select mode
+
+9. Overview Requirements
+
+Overview must show:
+- evaluated period start/end
+- counts (abroad/UK/unknown, Norway, inside-12nm)
+- longest UK streak
+- confidence
+- status + reason
+- fix guidance ranges when at risk/failing
+
+The period start selector controls the evaluated 365-day window.
+
+10. Reports Requirements
+
+Reports must export selected/evaluated 365-day window to CSV with day-level columns and summary header.
+
+11. Non-goals (v1)
+
+- no auth
+- no cloud sync
+- no HMRC submission
+- no legal determination guarantees

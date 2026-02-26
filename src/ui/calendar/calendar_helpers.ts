@@ -19,6 +19,17 @@ export function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
 }
 
+export function isDayInWindow(
+  dayKey: DayKey,
+  startDayKey: DayKey | null | undefined,
+  endDayKey: DayKey | null | undefined,
+): boolean {
+  if (!startDayKey || !endDayKey) {
+    return false
+  }
+  return dayKey >= startDayKey && dayKey <= endDayKey
+}
+
 export function getDayStatus(day: DerivedDay | undefined): DayStatus {
   if (!day || !day.tripType) {
     return 'unknown'

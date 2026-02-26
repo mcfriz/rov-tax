@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Reports icon">
+  <g fill="none" stroke="#E6EEF8" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M156 96 H310 L396 182 V416 Q396 448 364 448 H156 Q116 448 116 408 V136 Q116 96 156 96 Z"/>
+    <path d="M310 96 V182 H396"/>
+    <line x1="164" y1="348" x2="348" y2="348"/>
+    <path d="M172 332 L224 292 L268 314 L332 248"/>
+    <circle cx="172" cy="332" r="6"/>
+    <circle cx="224" cy="292" r="6"/>
+    <circle cx="268" cy="314" r="6"/>
+    <circle cx="332" cy="248" r="6"/>
+    <line x1="172" y1="214" x2="340" y2="214"/>
+    <line x1="172" y1="248" x2="300" y2="248"/>
+    <line x1="260" y1="214" x2="260" y2="248"/>
+  </g>
+</svg>

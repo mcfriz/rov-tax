@@ -12,7 +12,6 @@ type Props = {
 
 const tripTypeOptions: Array<{ value: TripType; label: string }> = [
   { value: 'OFFSHORE_WORK', label: 'Offshore Work' },
-  { value: 'UK_HOME', label: 'UK Home' },
   { value: 'HOLIDAY_ABROAD', label: 'Holiday Abroad' },
   { value: 'TRAINING_ABROAD', label: 'Training Abroad' },
   { value: 'TRANSIT', label: 'Transit' },
@@ -36,6 +35,16 @@ function getTodayKey(): string {
   return `${year}-${month}-${day}`
 }
 
+function defaultCountsTowardSed(tripType: TripType, sectorDefault: SectorDefault): boolean {
+  if (sectorDefault === 'UK_INSIDE_12NM') {
+    return false
+  }
+  if (tripType === 'UK_HOME') {
+    return false
+  }
+  return true
+}
+
 export default function TripModal({ trip, seedType, seedRange, onClose, onSave, tripDefaults }: Props) {
   const todayKey = useMemo(() => getTodayKey(), [])
 
@@ -52,10 +61,13 @@ export default function TripModal({ trip, seedType, seedRange, onClose, onSave, 
   const [dutyDefault, setDutyDefault] = useState<DutyType>(
     trip?.dutyDefault ?? defaults?.dutyDefault ?? 'OFFSHORE',
   )
-  const [countsTowardSedDefault, setCountsTowardSedDefault] = useState(
-    trip?.countsTowardSedDefault ?? defaults?.countsTowardSedDefault ?? true,
-  )
-  const [planned, setPlanned] = useState(trip?.planned ?? false)
+
+  useEffect(() => {
+    document.body.classList.add('modal-open')
+    return () => {
+      document.body.classList.remove('modal-open')
+    }
+  }, [])
 
   useEffect(() => {
     if (seedType) {
@@ -63,13 +75,11 @@ export default function TripModal({ trip, seedType, seedRange, onClose, onSave, 
       setTripType(seedType)
       setSectorDefault(seedDefaults.sectorDefault)
       setDutyDefault(seedDefaults.dutyDefault)
-      setCountsTowardSedDefault(seedDefaults.countsTowardSedDefault)
-      setPlanned(false)
       if (!title) {
         setTitle(seedType.replace('_', ' ').toLowerCase())
       }
     }
-  }, [seedType, tripDefaults])
+  }, [seedType, tripDefaults, title])
 
   const handleSubmit = () => {
     const trimmedTitle = title.trim() || 'Untitled Trip'
@@ -82,8 +92,8 @@ export default function TripModal({ trip, seedType, seedRange, onClose, onSave, 
       vessel: vessel.trim() || undefined,
       sectorDefault,
       dutyDefault,
-      countsTowardSedDefault,
-      planned,
+      countsTowardSedDefault: defaultCountsTowardSed(tripType, sectorDefault),
+      planned: trip?.planned ?? false,
     })
   }
 
@@ -157,20 +167,6 @@ export default function TripModal({ trip, seedType, seedRange, onClose, onSave, 
                 </option>
               ))}
             </select>
-          </label>
-
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={countsTowardSedDefault}
-              onChange={(event) => setCountsTowardSedDefault(event.target.checked)}
-            />
-            Counts toward SED by default
-          </label>
-
-          <label className="checkbox-row">
-            <input type="checkbox" checked={planned} onChange={(event) => setPlanned(event.target.checked)} />
-            Planned rotation
           </label>
         </div>
 

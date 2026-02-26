@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { ChangeEvent } from 'react'
+import type { ChangeEvent, Dispatch, SetStateAction } from 'react'
 import type { AppState, DayKey, Trip, TripType } from '../../data/types'
 import { createTrip, toDayKey } from '../../data/helpers'
 import { autoFindBestWindow, evaluateWindow } from '../../rules/sed_engine'
@@ -18,19 +18,19 @@ const tripDefaults: Record<TripType, Pick<Trip, 'sectorDefault' | 'dutyDefault' 
     countsTowardSedDefault: false,
   },
   HOLIDAY_ABROAD: {
-    sectorDefault: 'OTHER',
+    sectorDefault: 'UK_OUTSIDE_12NM',
     dutyDefault: 'LEAVE',
-    countsTowardSedDefault: false,
+    countsTowardSedDefault: true,
   },
   TRAINING_ABROAD: {
-    sectorDefault: 'OTHER',
+    sectorDefault: 'UK_OUTSIDE_12NM',
     dutyDefault: 'TRAINING',
-    countsTowardSedDefault: false,
+    countsTowardSedDefault: true,
   },
   TRANSIT: {
-    sectorDefault: 'OTHER',
+    sectorDefault: 'UK_OUTSIDE_12NM',
     dutyDefault: 'TRANSIT',
-    countsTowardSedDefault: false,
+    countsTowardSedDefault: true,
   },
   UK_WATERS_WORK: {
     sectorDefault: 'UK_INSIDE_12NM',
@@ -41,19 +41,7 @@ const tripDefaults: Record<TripType, Pick<Trip, 'sectorDefault' | 'dutyDefault' 
 
 type Props = {
   state: AppState
-  onChange: (next: AppState) => void
-}
-
-function calcConfidence(unknownDays: number, total = 365): number {
-  const ratio = Math.max(0, Math.min(1, 1 - unknownDays / total))
-  return Math.round(ratio * 100)
-}
-
-function getFixNeeded(ukMidnights: number, abroadMidnights: number): number {
-  if (abroadMidnights > ukMidnights) {
-    return 0
-  }
-  return ukMidnights - abroadMidnights + 1
+  onChange: Dispatch<SetStateAction<AppState>>
 }
 
 function pickSuggestedRange(summary: ReturnType<typeof evaluateWindow>): { startDayKey: DayKey; endDayKey: DayKey } {
@@ -80,30 +68,30 @@ export default function OverviewTab({ state, onChange }: Props) {
     return autoFindBestWindow(anchorDate, 730, dayMap).summary
   }, [anchorDate, dayMap, selectedStart])
 
-  const confidence = calcConfidence(summary.unknownDays)
-  const fixNeeded = summary.status === 'FAILING' || summary.status === 'AT_RISK'
-    ? getFixNeeded(summary.ukMidnights, summary.abroadMidnights)
-    : 0
+  const confidence = summary.confidencePercent
+  const fixNeeded = summary.fixNeededAbroadDays
 
   const handlePeriodChange = (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value
-    onChange({
-      ...state,
+    onChange((prev) => ({
+      ...prev,
+      selectedDate: value || prev.selectedDate,
+      calendarZoom: value ? 'YEAR' : prev.calendarZoom,
       settings: {
-        ...state.settings,
+        ...prev.settings,
         selectedPeriodStart: value || null,
       },
-    })
+    }))
   }
 
   const handleClearPeriod = () => {
-    onChange({
-      ...state,
+    onChange((prev) => ({
+      ...prev,
       settings: {
-        ...state.settings,
+        ...prev.settings,
         selectedPeriodStart: null,
       },
-    })
+    }))
   }
 
   const handleHolidaySave = (draft: Omit<Trip, 'id' | 'createdAt' | 'updatedAt' | 'colourTag'> & { id?: string }) => {
@@ -119,10 +107,10 @@ export default function OverviewTab({ state, onChange }: Props) {
       planned: draft.planned,
     })
 
-    onChange({
-      ...state,
-      trips: [...state.trips, nextTrip],
-    })
+    onChange((prev) => ({
+      ...prev,
+      trips: [...prev.trips, nextTrip],
+    }))
 
     setIsHolidayModalOpen(false)
   }

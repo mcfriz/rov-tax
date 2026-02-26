@@ -10,6 +10,8 @@ type StoragePayload = {
 }
 
 function mergeState(partial: Partial<AppState>): AppState {
+  // Do not re-seed demo trips/overrides once persisted state exists.
+  // Persisted collections should be authoritative, including empty arrays/maps.
   return {
     ...defaultState,
     ...partial,
@@ -17,11 +19,8 @@ function mergeState(partial: Partial<AppState>): AppState {
       ...defaultState.settings,
       ...partial.settings,
     },
-    overrides: {
-      ...defaultState.overrides,
-      ...partial.overrides,
-    },
-    trips: partial.trips ?? defaultState.trips,
+    overrides: partial.overrides ?? {},
+    trips: partial.trips ?? [],
   }
 }
 

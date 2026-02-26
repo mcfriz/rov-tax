@@ -112,6 +112,43 @@ function applyOverride(base: DerivedDay, override: DayOverride): DerivedDay {
   }
 }
 
+function deriveHomeDay(dayKey: DayKey): DerivedDay {
+  return {
+    dayKey,
+    sourceTripId: null,
+    tripType: 'UK_HOME',
+    midnightLocation: 'INSIDE_12NM_UK',
+    dutyType: 'LEAVE',
+    countsTowardSed: false,
+    vessel: undefined,
+    notes: undefined,
+    isPlanned: false,
+    isOverride: false,
+    lastEdited: 0,
+  }
+}
+
+function fillHomeGaps(trips: Trip[], map: Record<DayKey, DerivedDay>) {
+  if (trips.length === 0) {
+    return
+  }
+
+  const sorted = [...trips].sort((a, b) => a.startDayKey.localeCompare(b.startDayKey))
+  const minStart = sorted[0].startDayKey
+  const maxEnd = sorted[sorted.length - 1].endDayKey
+
+  const start = parseDayKey(minStart)
+  const end = parseDayKey(maxEnd)
+  const days = Math.max(0, Math.round((end.getTime() - start.getTime()) / dayMs))
+
+  for (let i = 0; i <= days; i += 1) {
+    const dayKey = formatDayKey(addDays(start, i))
+    if (!map[dayKey]) {
+      map[dayKey] = deriveHomeDay(dayKey)
+    }
+  }
+}
+
 export function generateDayMap(
   trips: Trip[],
   overrides: Record<DayKey, DayOverride>,
@@ -146,6 +183,8 @@ export function generateDayMap(
       }
     }
   }
+
+  fillHomeGaps(trips, map)
 
   for (const [dayKey, override] of Object.entries(overrides)) {
     const base = map[dayKey] ?? emptyDerived(dayKey)

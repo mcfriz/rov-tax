@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import type { DayKey, DayOverride } from '../../data/types'
 import type { DerivedDay } from '../../rules/trip_engine'
 import DayOverrideEditor from './DayOverrideEditor'
@@ -11,6 +12,13 @@ type Props = {
 }
 
 export default function DayOverrideModal({ dayKey, base, override, onClose, onSave }: Props) {
+  useEffect(() => {
+    document.body.classList.add('modal-open')
+    return () => {
+      document.body.classList.remove('modal-open')
+    }
+  }, [])
+
   return (
     <div className="modal-scrim" role="dialog" aria-modal="true">
       <div className="modal-card">

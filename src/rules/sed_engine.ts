@@ -15,7 +15,12 @@ export type SedSummary = {
   passesHalfRule: boolean
   margin: number
   longestConsecutiveUkStreak: number
+  failsConsecutiveUkRule: boolean
   bufferUkDaysRemaining: number
+  fixNeededAbroadDays: number
+  confidencePercent: number
+  bestCasePassesHalfRule: boolean
+  worstCasePassesHalfRule: boolean
   status: SedStatus
   reason: string
   criticalRanges: Array<{ startDayKey: DayKey; endDayKey: DayKey }>
@@ -60,51 +65,115 @@ function calcLongestUkStreak(days: DayKey[], dayMap: Record<DayKey, DerivedDay>)
   return best
 }
 
-function calcCriticalRanges(days: DayKey[], dayMap: Record<DayKey, DerivedDay>): Array<{ startDayKey: DayKey; endDayKey: DayKey }> {
-  const ranges: Array<{ startDayKey: DayKey; endDayKey: DayKey }> = []
-  let rangeStart: DayKey | null = null
-  for (const dayKey of days) {
-    const day = dayMap[dayKey]
-    const uk = isUkMidnight(day)
-    const unknown = isUnknown(day)
-    if (uk || unknown) {
-      if (!rangeStart) {
-        rangeStart = dayKey
-      }
-    } else if (rangeStart) {
-      ranges.push({ startDayKey: rangeStart, endDayKey: dayKey })
-      rangeStart = null
+type RangeSegment = {
+  startDayKey: DayKey
+  endDayKey: DayKey
+  length: number
+  endIndex: number
+}
+
+function collectUkSegments(days: DayKey[], dayMap: Record<DayKey, DerivedDay>): RangeSegment[] {
+  const segments: RangeSegment[] = []
+  let startIndex = -1
+
+  for (let i = 0; i < days.length; i += 1) {
+    const dayKey = days[i]
+    const uk = isUkMidnight(dayMap[dayKey])
+    if (uk && startIndex === -1) {
+      startIndex = i
+    }
+    if (!uk && startIndex !== -1) {
+      segments.push({
+        startDayKey: days[startIndex],
+        endDayKey: days[i - 1],
+        length: i - startIndex,
+        endIndex: i - 1,
+      })
+      startIndex = -1
     }
   }
-  if (rangeStart) {
-    const last = days[days.length - 1]
-    ranges.push({ startDayKey: rangeStart, endDayKey: last })
+
+  if (startIndex !== -1) {
+    segments.push({
+      startDayKey: days[startIndex],
+      endDayKey: days[days.length - 1],
+      length: days.length - startIndex,
+      endIndex: days.length - 1,
+    })
   }
-  return ranges
+
+  return segments
+}
+
+function calcCriticalRanges(
+  days: DayKey[],
+  dayMap: Record<DayKey, DerivedDay>,
+  fixNeededAbroadDays: number,
+): Array<{ startDayKey: DayKey; endDayKey: DayKey }> {
+  if (fixNeededAbroadDays <= 0) {
+    return []
+  }
+
+  const ranked = collectUkSegments(days, dayMap).sort((a, b) => {
+    if (a.length !== b.length) {
+      return b.length - a.length
+    }
+    return b.endIndex - a.endIndex
+  })
+
+  const selected: Array<{ startDayKey: DayKey; endDayKey: DayKey }> = []
+  let covered = 0
+
+  for (const segment of ranked) {
+    selected.push({ startDayKey: segment.startDayKey, endDayKey: segment.endDayKey })
+    covered += segment.length
+    if (covered >= fixNeededAbroadDays) {
+      break
+    }
+  }
+
+  return selected
+}
+
+function getConfidencePercent(unknownDays: number, windowLength: number, ambiguous: boolean): number {
+  const base = Math.max(0, 100 - Math.round((unknownDays / windowLength) * 100))
+  if (!ambiguous) {
+    return base
+  }
+  return Math.min(base, 65)
 }
 
 function classifyStatus(
+  passesHalfRule: boolean,
+  failsConsecutiveUkRule: boolean,
+  margin: number,
   ukMidnights: number,
-  totalKnownDays: number,
+  abroadMidnights: number,
   unknownDays: number,
+  bestCasePassesHalfRule: boolean,
+  worstCasePassesHalfRule: boolean,
 ): { status: SedStatus; reason: string; buffer: number } {
-  if (totalKnownDays === 0) {
+  if (ukMidnights + abroadMidnights === 0) {
     return { status: 'UNKNOWN', reason: 'No known midnight locations in window.', buffer: 0 }
   }
 
-  const limit = Math.floor(totalKnownDays / 2)
-  const passes = ukMidnights < totalKnownDays / 2
-  const margin = limit - ukMidnights
-
-  if (!passes) {
-    return { status: 'FAILING', reason: 'UK midnights exceed half of known days.', buffer: 0 }
+  if (failsConsecutiveUkRule) {
+    return { status: 'FAILING', reason: 'UK consecutive midnight streak is above 183 days.', buffer: 0 }
   }
 
-  if (margin <= 3 || unknownDays > 20) {
-    return { status: 'AT_RISK', reason: 'Small buffer or many unknown days in window.', buffer: margin }
+  if (!passesHalfRule) {
+    return { status: 'FAILING', reason: 'UK midnights are not lower than abroad midnights.', buffer: 0 }
   }
 
-  return { status: 'QUALIFYING', reason: 'UK midnights below half of known days.', buffer: margin }
+  if (unknownDays > 0 && bestCasePassesHalfRule !== worstCasePassesHalfRule) {
+    return { status: 'UNKNOWN', reason: 'Unknown days can change pass/fail outcome.', buffer: Math.max(0, margin) }
+  }
+
+  if (margin <= 7 || unknownDays > 0) {
+    return { status: 'AT_RISK', reason: 'Window passes but buffer is tight or uncertainty remains.', buffer: Math.max(0, margin) }
+  }
+
+  return { status: 'QUALIFYING', reason: 'Window passes with a healthy abroad-vs-UK margin.', buffer: Math.max(0, margin) }
 }
 
 export function evaluateWindow(
@@ -139,12 +208,29 @@ export function evaluateWindow(
   }
 
   const totalKnownDays = abroadMidnights + ukMidnights
-  const passesHalfRule = totalKnownDays > 0 ? ukMidnights < totalKnownDays / 2 : false
-  const margin = Math.floor(totalKnownDays / 2) - ukMidnights
+  const passesHalfRule = abroadMidnights > ukMidnights
+  const margin = abroadMidnights - ukMidnights
   const longestConsecutiveUkStreak = calcLongestUkStreak(days, dayMap)
-  const bufferUkDaysRemaining = Math.max(0, margin)
-  const { status, reason } = classifyStatus(ukMidnights, totalKnownDays, unknownDays)
-  const criticalRanges = calcCriticalRanges(days, dayMap)
+  const failsConsecutiveUkRule = longestConsecutiveUkStreak > 183
+  const bufferUkDaysRemaining = Math.max(0, abroadMidnights - ukMidnights)
+  const fixNeededAbroadDays = Math.max(0, ukMidnights - abroadMidnights + 1)
+
+  const bestCasePassesHalfRule = abroadMidnights + unknownDays > ukMidnights
+  const worstCasePassesHalfRule = abroadMidnights > ukMidnights + unknownDays
+  const ambiguousUnknown = unknownDays > 0 && bestCasePassesHalfRule !== worstCasePassesHalfRule
+  const confidencePercent = getConfidencePercent(unknownDays, length, ambiguousUnknown)
+
+  const { status, reason } = classifyStatus(
+    passesHalfRule,
+    failsConsecutiveUkRule,
+    margin,
+    ukMidnights,
+    abroadMidnights,
+    unknownDays,
+    bestCasePassesHalfRule,
+    worstCasePassesHalfRule,
+  )
+  const criticalRanges = calcCriticalRanges(days, dayMap, fixNeededAbroadDays)
 
   return {
     startDayKey,
@@ -157,7 +243,12 @@ export function evaluateWindow(
     passesHalfRule,
     margin,
     longestConsecutiveUkStreak,
+    failsConsecutiveUkRule,
     bufferUkDaysRemaining,
+    fixNeededAbroadDays,
+    confidencePercent,
+    bestCasePassesHalfRule,
+    worstCasePassesHalfRule,
     status,
     reason,
     criticalRanges,
