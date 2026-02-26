@@ -140,8 +140,8 @@ export default function OverviewTab({ state, onChange }: Props) {
         <h3>Evaluated Period</h3>
         <p>
           {selectedStart
-            ? `Selected window: ${summary.startDayKey} -> ${summary.endDayKey}`
-            : `Auto window: ${summary.startDayKey} -> ${summary.endDayKey}`}
+            ? `Selected window: ${summary.startDayKey} to ${summary.endDayKey}`
+            : `Auto window: ${summary.startDayKey} to ${summary.endDayKey}`}
         </p>
         <label className="field">
           <span>Select period start</span>
@@ -204,7 +204,7 @@ export default function OverviewTab({ state, onChange }: Props) {
             ) : (
               summary.criticalRanges.map((range) => (
                 <div key={`${range.startDayKey}-${range.endDayKey}`} className="critical-item">
-                  <strong>{range.startDayKey} -> {range.endDayKey}</strong>
+                  <strong>{range.startDayKey} to {range.endDayKey}</strong>
                   <span>Consider moving this block abroad.</span>
                 </div>
               ))
