@@ -1,5 +1,5 @@
-import type { DayKey, SectorDefault, Trip, TripType } from '../data/types'
-import { createTrip, toDayKey } from '../data/helpers'
+import type { DayKey, SectorDefault, Trip } from '../data/types'
+import { createTrip } from '../data/helpers'
 
 export type RotaTemplateInput = {
   startDayKey: DayKey
@@ -33,17 +33,6 @@ function formatDayKey(date: Date): DayKey {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
-}
-
-function expandDays(startDayKey: DayKey, endDayKey: DayKey): Set<DayKey> {
-  const start = parseDayKey(startDayKey)
-  const end = parseDayKey(endDayKey)
-  const days = Math.max(0, Math.round((end.getTime() - start.getTime()) / dayMs))
-  const set = new Set<DayKey>()
-  for (let i = 0; i <= days; i += 1) {
-    set.add(formatDayKey(addDays(start, i)))
-  }
-  return set
 }
 
 function overlaps(existing: Trip, candidateStart: DayKey, candidateEnd: DayKey): boolean {

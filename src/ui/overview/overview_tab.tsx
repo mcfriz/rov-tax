@@ -106,7 +106,7 @@ export default function OverviewTab({ state, onChange }: Props) {
     })
   }
 
-  const handleHolidaySave = (draft: Omit<Trip, 'createdAt' | 'updatedAt' | 'colourTag'> & { id?: string }) => {
+  const handleHolidaySave = (draft: Omit<Trip, 'id' | 'createdAt' | 'updatedAt' | 'colourTag'> & { id?: string }) => {
     const nextTrip = createTrip({
       title: draft.title,
       tripType: draft.tripType,

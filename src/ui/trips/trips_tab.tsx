@@ -99,7 +99,7 @@ export default function TripsTab({ state, onChange }: Props) {
     setSeedType(null)
   }
 
-  const handleSave = (draft: Omit<Trip, 'createdAt' | 'updatedAt' | 'colourTag'> & { id?: string }) => {
+  const handleSave = (draft: Omit<Trip, 'id' | 'createdAt' | 'updatedAt' | 'colourTag'> & { id?: string }) => {
     if (editingTrip) {
       const nextTrips = state.trips.map((trip) => {
         if (trip.id !== editingTrip.id) {

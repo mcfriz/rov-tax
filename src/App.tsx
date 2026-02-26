@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { ReactElement } from 'react'
 import './App.css'
 import { loadState, saveState } from './data/storage'
 import { defaultState } from './data/state'
@@ -13,7 +14,7 @@ import SettingsModal from './ui/SettingsModal'
 type TabDef = {
   id: TabId
   label: string
-  component: (props: TabPageProps) => JSX.Element
+  component: (props: TabPageProps) => ReactElement
 }
 
 type TabPageProps = {

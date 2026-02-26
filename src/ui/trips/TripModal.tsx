@@ -6,7 +6,7 @@ type Props = {
   seedType: TripType | null
   seedRange?: { startDayKey: DayKey; endDayKey: DayKey }
   onClose: () => void
-  onSave: (trip: Omit<Trip, 'createdAt' | 'updatedAt' | 'colourTag'> & { id?: string }) => void
+  onSave: (trip: Omit<Trip, 'id' | 'createdAt' | 'updatedAt' | 'colourTag'> & { id?: string }) => void
   tripDefaults: Record<TripType, Pick<Trip, 'sectorDefault' | 'dutyDefault' | 'countsTowardSedDefault'>>
 }
 
