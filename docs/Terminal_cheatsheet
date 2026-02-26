@@ -1,7 +1,11 @@
 ---
 
 # Run local preview (Vite)
+1st
+npm install
+npm run dev -- --host 127.0.0.1 --port 4173
 
+2nd
 npm run dev -- --host 127.0.0.1 --port 4173
 
 Open: http://127.0.0.1:4173/
@@ -21,7 +25,7 @@ npm run preview -- --host 127.0.0.1 --port 4173
 # Commit + push
 
 git add .
-git commit -m "new repo after delete"
+git commit -m "updated rovtax app"
 git push
 
 ---
