@@ -1,0 +1,29 @@
+---
+
+# Run local preview (Vite)
+
+npm run dev -- --host 127.0.0.1 --port 4173
+
+Open: http://127.0.0.1:4173/
+
+Do not use VS Code "Live Preview" or open index.html directly.
+This project uses TypeScript entry files that must be served by Vite.
+
+---
+
+# Build + preview production output
+
+npm run build
+npm run preview -- --host 127.0.0.1 --port 4173
+
+---
+
+# Commit + push
+
+git add .
+git commit -m "new repo after delete"
+git push
+
+---
+
+Use one repo per machine; always git pull before editing, git commit + git push after.
