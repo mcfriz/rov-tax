@@ -4,7 +4,7 @@ import type { AppState, DayKey, Trip, TripType } from '../../data/types'
 import { createTrip, toDayKey } from '../../data/helpers'
 import { autoFindBestWindow, evaluateWindow } from '../../rules/sed_engine'
 import { generateDayMap } from '../../rules/trip_engine'
-import TripModal from '../trips/TripModal'
+import TripModal, { type TripModalSavePayload } from '../trips/TripModal'
 
 const tripDefaults: Record<TripType, Pick<Trip, 'sectorDefault' | 'dutyDefault' | 'countsTowardSedDefault'>> = {
   OFFSHORE_WORK: {
@@ -42,6 +42,20 @@ const tripDefaults: Record<TripType, Pick<Trip, 'sectorDefault' | 'dutyDefault' 
 type Props = {
   state: AppState
   onChange: Dispatch<SetStateAction<AppState>>
+}
+
+function statusTone(status: string): string {
+  if (status === 'QUALIFYING') return 'sed-good'
+  if (status === 'AT_RISK') return 'sed-warn'
+  if (status === 'FAILING') return 'sed-bad'
+  return 'sed-unknown'
+}
+
+function statusPillClass(status: string): string {
+  if (status === 'QUALIFYING') return 'is-good'
+  if (status === 'AT_RISK') return 'is-warn'
+  if (status === 'FAILING') return 'is-bad'
+  return 'is-unknown'
 }
 
 function pickSuggestedRange(summary: ReturnType<typeof evaluateWindow>): { startDayKey: DayKey; endDayKey: DayKey } {
@@ -94,7 +108,7 @@ export default function OverviewTab({ state, onChange }: Props) {
     }))
   }
 
-  const handleHolidaySave = (draft: Omit<Trip, 'id' | 'createdAt' | 'updatedAt' | 'colourTag'> & { id?: string }) => {
+  const handleHolidaySave = (draft: TripModalSavePayload) => {
     const nextTrip = createTrip({
       title: draft.title,
       tripType: draft.tripType,
@@ -124,50 +138,73 @@ export default function OverviewTab({ state, onChange }: Props) {
         <p>Monitor SED eligibility and correct gaps early.</p>
       </header>
 
+      <section className={`sed-banner overview-sticky-bar ${statusTone(summary.status)}`}>
+        <div className="sed-inline-head">
+          <h3>SED: {summary.status.replace('_', ' ')}</h3>
+          <span className="sed-inline-period">
+            {selectedStart ? 'Manual' : 'Auto'} {summary.startDayKey} to {summary.endDayKey}
+          </span>
+        </div>
+        <div className="sed-meta">
+          <span>Abroad: {summary.abroadMidnights}</span>
+          <span>UK: {summary.ukMidnights}</span>
+        </div>
+      </section>
+
       <section className="card overview-period">
-        <h3>Evaluated Period</h3>
-        <p>
-          {selectedStart
-            ? `Selected window: ${summary.startDayKey} to ${summary.endDayKey}`
-            : `Auto window: ${summary.startDayKey} to ${summary.endDayKey}`}
+        <div className="overview-card-head">
+          <h3>Evaluated Period</h3>
+          <span className="overview-mode-pill">{selectedStart ? 'Manual' : 'Auto'}</span>
+        </div>
+        <p className="overview-period-range">
+          {summary.startDayKey} to {summary.endDayKey}
         </p>
-        <label className="field">
-          <span>Select period start</span>
-          <input type="date" value={selectedStart ?? ''} onChange={handlePeriodChange} />
-        </label>
-        {selectedStart ? (
-          <button type="button" className="ghost-button" onClick={handleClearPeriod}>
-            Clear selection
-          </button>
-        ) : null}
+        <div className="overview-period-controls">
+          <label className="overview-input-group">
+            <span>Period Start (365 days)</span>
+            <input type="date" value={selectedStart ?? ''} onChange={handlePeriodChange} />
+          </label>
+          <div className="overview-period-actions">
+            {selectedStart ? (
+              <button type="button" className="ghost-button" onClick={handleClearPeriod}>
+                Clear Selection
+              </button>
+            ) : (
+              <span className="overview-hint-chip">Using best auto period</span>
+            )}
+          </div>
+        </div>
       </section>
 
       <section className="card overview-stats">
-        <h3>SED Summary</h3>
-        <div className="overview-grid">
-          <div>
-            <span className="overview-label">Abroad midnights</span>
+        <div className="overview-card-head">
+          <h3>SED Summary</h3>
+          <span className={`overview-status-pill ${statusPillClass(summary.status)}`}>{summary.status.replace('_', ' ')}</span>
+        </div>
+        <div className="overview-metrics">
+          <div className="overview-metric">
+            <span className="overview-label">Abroad Midnights</span>
             <strong>{summary.abroadMidnights}</strong>
           </div>
-          <div>
-            <span className="overview-label">UK midnights</span>
+          <div className="overview-metric">
+            <span className="overview-label">UK Midnights</span>
             <strong>{summary.ukMidnights}</strong>
           </div>
-          <div>
-            <span className="overview-label">Unknown days</span>
+          <div className="overview-metric">
+            <span className="overview-label">Unknown Days</span>
             <strong>{summary.unknownDays}</strong>
           </div>
-          <div>
-            <span className="overview-label">Longest UK streak</span>
+          <div className="overview-metric">
+            <span className="overview-label">Longest UK Streak</span>
             <strong>{summary.longestConsecutiveUkStreak} days</strong>
           </div>
-          <div>
-            <span className="overview-label">Norway sector</span>
+          <div className="overview-metric">
+            <span className="overview-label">Norway Sector</span>
             <strong>{summary.norwayMidnights}</strong>
           </div>
-          <div>
+          <div className="overview-metric">
             <span className="overview-label">Inside 12nm UK</span>
-            <strong>{summary.ukMidnights}</strong>
+            <strong>{summary.inside12NmTripTaggedDays}</strong>
           </div>
         </div>
 
@@ -179,6 +216,9 @@ export default function OverviewTab({ state, onChange }: Props) {
           <div className="confidence-bar">
             <span style={{ width: `${confidence}%` }} />
           </div>
+          <p className="confidence-copy">
+            Higher confidence means fewer unknown days in the selected 365-day window.
+          </p>
         </div>
       </section>
 
@@ -209,6 +249,7 @@ export default function OverviewTab({ state, onChange }: Props) {
           trip={null}
           seedType="HOLIDAY_ABROAD"
           seedRange={suggestedRange}
+          overrides={state.overrides}
           onClose={() => setIsHolidayModalOpen(false)}
           onSave={handleHolidaySave}
           tripDefaults={tripDefaults}

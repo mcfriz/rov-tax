@@ -11,6 +11,13 @@ type Props = {
   onChange: Dispatch<SetStateAction<AppState>>
 }
 
+function statusPillClass(status: string): string {
+  if (status === 'QUALIFYING') return 'is-good'
+  if (status === 'AT_RISK') return 'is-warn'
+  if (status === 'FAILING') return 'is-bad'
+  return 'is-unknown'
+}
+
 export default function ReportsTab({ state }: Props) {
   const dayMap = useMemo(() => generateDayMap(state.trips, state.overrides), [state.trips, state.overrides])
   const selectedStart = state.settings.selectedPeriodStart
@@ -34,6 +41,15 @@ export default function ReportsTab({ state }: Props) {
     () => exportWindowCsv(summary.startDayKey, 365, dayMap, tripTitles),
     [summary.startDayKey, dayMap, tripTitles],
   )
+  const previewMaxLines = 60
+  const previewRows = useMemo(() => {
+    const allLines = csvExport.csv.split('\n')
+    return {
+      text: allLines.slice(0, previewMaxLines).join('\n'),
+      total: allLines.length,
+      truncated: allLines.length > previewMaxLines,
+    }
+  }, [csvExport.csv])
 
   const handleDownload = () => {
     const blob = new Blob([csvExport.csv], { type: 'text/csv;charset=utf-8;' })
@@ -52,37 +68,53 @@ export default function ReportsTab({ state }: Props) {
         <p>Export a CSV snapshot for your accountant or records.</p>
       </header>
 
-      <section className="card reports-summary">
-        <h3>SED Window Export</h3>
-        <p>{summary.startDayKey} to {summary.endDayKey}</p>
-        <div className="overview-grid">
+      <section className="card reports-window">
+        <div className="reports-window-top">
           <div>
-            <span className="overview-label">Abroad midnights</span>
+            <h3>SED Window Export</h3>
+            <p className="reports-window-range">
+              {summary.startDayKey} to {summary.endDayKey}
+            </p>
+          </div>
+          <span className={`overview-status-pill ${statusPillClass(summary.status)}`}>{summary.status.replace('_', ' ')}</span>
+        </div>
+
+        <div className="reports-metrics">
+          <div className="reports-metric">
+            <span className="overview-label">Abroad Midnights</span>
             <strong>{summary.abroadMidnights}</strong>
           </div>
-          <div>
-            <span className="overview-label">UK midnights</span>
+          <div className="reports-metric">
+            <span className="overview-label">UK Midnights</span>
             <strong>{summary.ukMidnights}</strong>
           </div>
-          <div>
-            <span className="overview-label">Unknown days</span>
+          <div className="reports-metric">
+            <span className="overview-label">Unknown Days</span>
             <strong>{summary.unknownDays}</strong>
           </div>
-          <div>
-            <span className="overview-label">Norway sector</span>
+          <div className="reports-metric">
+            <span className="overview-label">Norway Sector</span>
             <strong>{summary.norwayMidnights}</strong>
           </div>
         </div>
-        <button type="button" className="primary-button" onClick={handleDownload}>
-          Download CSV
-        </button>
+
+        <div className="reports-actions">
+          <button type="button" className="primary-button" onClick={handleDownload}>
+            Download CSV
+          </button>
+          <span className="reports-hint-chip">{csvExport.rows.length} rows ready</span>
+        </div>
       </section>
 
       <section className="card reports-preview">
-        <h3>CSV Preview</h3>
-        <div className="csv-preview">
-          <pre>{csvExport.csv}</pre>
+        <div className="reports-preview-head">
+          <h3>CSV Preview</h3>
+          <span className="reports-hint-chip">Showing {Math.min(previewRows.total, previewMaxLines)} of {previewRows.total}</span>
         </div>
+        <div className="csv-preview">
+          <pre>{previewRows.text}</pre>
+        </div>
+        {previewRows.truncated ? <p className="hint">Preview is truncated. Download CSV for full export.</p> : null}
       </section>
 
       <section className="card reports-stub">

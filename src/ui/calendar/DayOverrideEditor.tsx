@@ -30,10 +30,21 @@ function buildOverride(
   }
 }
 
+function dutyLabel(value: DutyType): string {
+  if (value === 'OFFSHORE') return 'Offshore'
+  if (value === 'LEAVE') return 'Leave'
+  if (value === 'TRANSIT') return 'Transit'
+  if (value === 'TRAINING') return 'Training'
+  if (value === 'SICK') return 'Sick'
+  return 'Other'
+}
+
 export default function DayOverrideEditor({ dayKey, base, override, onSave }: Props) {
   const currentMidnight = override?.midnightLocation ?? base?.midnightLocation ?? 'UNKNOWN'
   const currentDuty = override?.dutyType ?? base?.dutyType ?? 'OTHER'
   const currentCounts = override?.countsTowardSed ?? base?.countsTowardSed ?? false
+  const currentMidnightLabel = midnightOptions.find((option) => option.value === currentMidnight)?.label ?? 'Unknown'
+  const currentDutyLabel = dutyLabel(currentDuty)
 
   const handleClear = () => {
     onSave(dayKey, null)
@@ -51,7 +62,7 @@ export default function DayOverrideEditor({ dayKey, base, override, onSave }: Pr
             onSave(dayKey, buildOverride(dayKey, override, { midnightLocation: next }))
           }}
         >
-          <option value="">Use trip default ({currentMidnight})</option>
+          <option value="">Use trip default ({currentMidnightLabel})</option>
           {midnightOptions.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -70,10 +81,10 @@ export default function DayOverrideEditor({ dayKey, base, override, onSave }: Pr
             onSave(dayKey, buildOverride(dayKey, override, { dutyType: next }))
           }}
         >
-          <option value="">Use trip default ({currentDuty})</option>
+          <option value="">Use trip default ({currentDutyLabel})</option>
           {dutyOptions.map((option) => (
             <option key={option} value={option}>
-              {option}
+              {dutyLabel(option)}
             </option>
           ))}
         </select>

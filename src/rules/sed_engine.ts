@@ -10,6 +10,7 @@ export type SedSummary = {
   abroadMidnights: number
   ukMidnights: number
   norwayMidnights: number
+  inside12NmTripTaggedDays: number
   unknownDays: number
   totalKnownDays: number
   passesHalfRule: boolean
@@ -29,7 +30,8 @@ export type SedSummary = {
 const dayMs = 24 * 60 * 60 * 1000
 
 function isUkMidnight(day: DerivedDay | undefined): boolean {
-  return day?.midnightLocation === 'INSIDE_12NM_UK'
+  // Missing day entries are treated as UK/home in v1.
+  return !day || day.midnightLocation === 'INSIDE_12NM_UK'
 }
 
 function isAbroadMidnight(day: DerivedDay | undefined): boolean {
@@ -37,7 +39,8 @@ function isAbroadMidnight(day: DerivedDay | undefined): boolean {
 }
 
 function isUnknown(day: DerivedDay | undefined): boolean {
-  return !day || day.midnightLocation === 'UNKNOWN'
+  // Unknown now means explicitly tagged unknown only.
+  return day !== undefined && day.midnightLocation === 'UNKNOWN'
 }
 
 function getWindowDays(startDayKey: DayKey, length: number): DayKey[] {
@@ -185,6 +188,7 @@ export function evaluateWindow(
   let abroadMidnights = 0
   let norwayMidnights = 0
   let ukMidnights = 0
+  let inside12NmTripTaggedDays = 0
   let unknownDays = 0
 
   for (const dayKey of days) {
@@ -192,6 +196,9 @@ export function evaluateWindow(
     if (isUnknown(day)) {
       unknownDays += 1
       continue
+    }
+    if (day?.midnightLocation === 'INSIDE_12NM_UK' && day.sourceTripId) {
+      inside12NmTripTaggedDays += 1
     }
     if (day?.midnightLocation === 'NORWAY_SECTOR') {
       norwayMidnights += 1
@@ -238,6 +245,7 @@ export function evaluateWindow(
     abroadMidnights,
     ukMidnights,
     norwayMidnights,
+    inside12NmTripTaggedDays,
     unknownDays,
     totalKnownDays,
     passesHalfRule,
@@ -289,7 +297,8 @@ export function autoFindBestWindow(
 
 // Tests (as comments):
 // 1) Half rule: ukMidnights < totalKnownDays/2 passes.
-// 2) Unknown days do not count in totalKnownDays.
+// 2) Missing dayMap entries count as UK/home, not unknown.
 // 3) NORWAY_SECTOR increments abroad and norway.
-// 4) Critical ranges include stretches of UK/UNKNOWN days.
+// 4) Unknown days are only explicit midnightLocation UNKNOWN.
+// 5) inside12NmTripTaggedDays counts INSIDE_12NM_UK only when sourceTripId exists.
 // 5) autoFindBestWindow prefers qualifying windows with fewer UK/unknown days.

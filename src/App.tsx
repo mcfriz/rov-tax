@@ -2,14 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties, Dispatch, ReactElement, SetStateAction } from 'react'
 import './App.css'
 import { loadState, saveState } from './data/storage'
-import { defaultState } from './data/state'
 import type { AppState, TabId } from './data/types'
 import CalendarPage from './ui/calendar/CalendarPage'
 import TripsPage from './ui/trips/TripsPage'
 import OverviewPage from './ui/overview/OverviewPage'
 import ReportsPage from './ui/reports/ReportsPage'
 import { generateDayMap } from './rules/trip_engine'
-import SettingsModal from './ui/SettingsModal'
 import { Assets } from './ui/common/assets'
 
 type TabDef = {
@@ -26,7 +24,6 @@ type TabPageProps = {
 function App() {
   const [appState, setAppState] = useState(() => loadState())
   const [activeTab, setActiveTab] = useState<TabId>('trips')
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   useEffect(() => {
     saveState(appState)
@@ -74,12 +71,6 @@ function App() {
     setActiveTab(nextTab)
   }
 
-  const handleResetAppData = () => {
-    setAppState(defaultState)
-    saveState(defaultState)
-    setIsSettingsOpen(false)
-  }
-
   return (
     <div className="app-shell">
       <header className="app-bar">
@@ -87,11 +78,6 @@ function App() {
         <div className="app-title">
           <img src={Assets.mark} alt="" aria-hidden="true" />
           <span className="sr-only">ROV TAX</span>
-        </div>
-        <div className="app-actions">
-          <button type="button" className="ghost-button" onClick={() => setIsSettingsOpen(true)}>
-            Settings
-          </button>
         </div>
       </header>
 
@@ -126,10 +112,6 @@ function App() {
           </button>
         ))}
       </nav>
-
-      {isSettingsOpen ? (
-        <SettingsModal onClose={() => setIsSettingsOpen(false)} onReset={handleResetAppData} state={appState} />
-      ) : null}
     </div>
   )
 }

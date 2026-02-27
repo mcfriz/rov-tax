@@ -45,6 +45,7 @@ export interface DayOverride {
   countsTowardSed?: boolean
   vessel?: string
   notes?: string
+  source?: 'MIXED_TRIP'
   lastEdited: number
 }
 

@@ -11,10 +11,10 @@
   --accent-2: #5b6bff;
 
   /* Status */
-  --status-qualifying: #2fc4d8;
-  --status-at-risk: #f4b444;
-  --status-non-qualifying: #8a7cff;
-  --status-unknown: #54617a;
+  --status-qualifying: #2ee59d;
+  --status-at-risk: #ffb020;
+  --status-non-qualifying: #ff4d4d;
+  --status-unknown: #94a3b8;
 
   /* Tags */
   --tag-norway: #4bd2a4;
@@ -32,6 +32,6 @@
   --radius-l: 18px;
   --radius-xl: 22px;
 
-  --app-bar-height: 60px;
+  --app-bar-height: 52px;
   --tab-bar-height: 72px;
 }

@@ -1,6 +1,7 @@
+import { useEffect, useRef } from 'react'
 import type { DayKey } from '../../data/types'
 import type { DerivedDay } from '../../rules/trip_engine'
-import { buildMonthDays, formatDayKey, getDayStatus, getMonthTint, isDayInWindow, parseDayKey } from './calendar_helpers'
+import { buildMonthDays, formatDayKey, getDayStatus, isDayInWindow, parseDayKey } from './calendar_helpers'
 import { Assets } from '../common/assets'
 
 type Props = {
@@ -8,7 +9,6 @@ type Props = {
   onSelectMonth: (dayKey: DayKey) => void
   windowStartDayKey: DayKey
   windowEndDayKey: DayKey
-  focusWindowOnly: boolean
 }
 
 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -20,40 +20,52 @@ const statusToAsset: Record<string, string> = {
   unknown: Assets.statusDots.unknown,
 }
 
-export default function YearView({
-  dayMap,
-  onSelectMonth,
-  windowStartDayKey,
-  windowEndDayKey,
-  focusWindowOnly,
-}: Props) {
+function hasMonthWindowDays(days: Array<DayKey | null>, startDayKey: DayKey, endDayKey: DayKey): boolean {
+  return days.some((dayKey) => dayKey && isDayInWindow(dayKey, startDayKey, endDayKey))
+}
+
+export default function YearView({ dayMap, onSelectMonth, windowStartDayKey, windowEndDayKey }: Props) {
   const currentYear = new Date().getFullYear()
-  const windowStartYear = parseDayKey(windowStartDayKey).getFullYear()
-  const windowEndYear = parseDayKey(windowEndDayKey).getFullYear()
-  const years = focusWindowOnly
-    ? Array.from({ length: windowEndYear - windowStartYear + 1 }, (_, idx) => windowStartYear + idx)
-    : Array.from({ length: 11 }, (_, idx) => currentYear - 5 + idx)
+  const tripYears = Object.values(dayMap)
+    .filter((day) => Boolean(day.sourceTripId))
+    .map((day) => parseDayKey(day.dayKey).getFullYear())
+    .sort((a, b) => a - b)
+
+  const years =
+    tripYears.length === 0
+      ? [currentYear]
+      : tripYears[0] === tripYears[tripYears.length - 1]
+        ? [tripYears[0]]
+        : [tripYears[0], tripYears[tripYears.length - 1]]
+  const currentYearRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    if (!currentYearRef.current) {
+      return
+    }
+    currentYearRef.current.scrollIntoView({ block: 'start' })
+  }, [])
 
   return (
     <div className="year-view">
       {years.map((year) => (
-        <section key={year} className="year-block">
+        <section
+          key={year}
+          className={`year-block ${year === currentYear ? 'is-current-year' : ''}`}
+          ref={year === currentYear ? currentYearRef : undefined}
+        >
           <h3>{year}</h3>
           <div className="year-months">
             {monthNames.map((monthLabel, monthIndex) => {
               const days = buildMonthDays(year, monthIndex)
               const monthStart = formatDayKey(new Date(year, monthIndex, 1))
-              const monthDerived = Object.values(dayMap).filter((day) => {
-                const date = parseDayKey(day.dayKey)
-                return date.getFullYear() === year && date.getMonth() === monthIndex
-              })
-              const tint = getMonthTint(monthDerived)
+              const inSedPeriod = hasMonthWindowDays(days, windowStartDayKey, windowEndDayKey)
 
               return (
                 <button
                   key={`${year}-${monthLabel}`}
                   type="button"
-                  className={`mini-month ${tint}`}
+                  className={`mini-month ${inSedPeriod ? 'in-period' : ''}`}
                   onClick={() => onSelectMonth(monthStart)}
                 >
                   <span className="mini-title">{monthLabel}</span>
@@ -64,8 +76,9 @@ export default function YearView({
                       }
                       const status = getDayStatus(dayMap[dayKey])
                       const inWindow = isDayInWindow(dayKey, windowStartDayKey, windowEndDayKey)
+                      const isWindowEdge = dayKey === windowStartDayKey || dayKey === windowEndDayKey
                       return (
-                        <span key={dayKey} className={`mini-cell ${inWindow ? 'in-window' : ''}`}>
+                        <span key={dayKey} className={`mini-cell ${inWindow ? 'in-window' : ''} ${isWindowEdge ? 'window-edge' : ''}`}>
                           <img className="status-dot-mini" src={statusToAsset[status]} alt="" aria-hidden="true" />
                         </span>
                       )

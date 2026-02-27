@@ -81,9 +81,6 @@ export default function RotaTemplateModal({ onClose, onSave, defaultSector }: Pr
       <div className="modal-card">
         <header>
           <h3>Add Rota Template</h3>
-          <button type="button" className="icon-button" onClick={onClose}>
-            Close
-          </button>
         </header>
 
         <div className="modal-body">
